@@ -1,4 +1,4 @@
-# WiiM Controller for Stream Deck
+# WiiM Controller Plugin for Stream Deck
 
 Control your [WiiM](https://wiimhome.com) audio player directly from your Elgato Stream Deck.
 
@@ -18,7 +18,7 @@ Control your [WiiM](https://wiimhome.com) audio player directly from your Elgato
 
 ## Installation
 
-1. Download the latest `com.wiim.streamdeck.streamDeckPlugin` from [Releases](../../releases)
+1. Download the latest `com.wiim.streamdeck.streamDeckPlugin` from [Releases](../../releases/latest)
 2. Double-click the file to install
 3. In the Stream Deck app, find **Wiim Controller** in the action list
 4. Drag an action to your deck
@@ -51,12 +51,17 @@ cd ..
 zip -r com.wiim.streamdeck.streamDeckPlugin com.wiim.streamdeck.sdPlugin/ -x "*.DS_Store"
 ```
 
-Or simply push a version tag to trigger the GitHub Actions release workflow:
+Double-click the resulting `.streamDeckPlugin` file to install.
 
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+## Releases
+
+Releases are automated via GitHub Actions. Every push to `main` triggers a new release:
+
+- **Patch** bump (default) — any regular commit
+- **Minor** bump — include `(MINOR)` in the commit message
+- **Major** bump — include `(MAJOR)` in the commit message
+
+The workflow automatically stamps the version in all plugin files, commits it back to the repo, tags, builds, and publishes a GitHub Release with the `.streamDeckPlugin` artifact attached.
 
 ## License
 
