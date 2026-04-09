@@ -42,8 +42,8 @@ jobs:
           NEW_VERSION: ${{ steps.version.outputs.version }}
         working-directory: com.wiim.streamdeck.sdPlugin
         run: |
-          # manifest.json
-          sed -i "s/\"Version\": \"[^\"]*\"/\"Version\": \"${NEW_VERSION}\"/" manifest.json
+          # manifest.json (only the top-level Version field, not Nodejs.Version)
+          sed -i "0,/\"Version\": \"[^\"]*\"/{s/\"Version\": \"[^\"]*\"/\"Version\": \"${NEW_VERSION}\"/}" manifest.json
           # plugin.js header and log message
           sed -i "s/Plugin v[0-9]\+\.[0-9]\+\.[0-9]\+/Plugin v${NEW_VERSION}/g" plugin.js
           # package.json + package-lock.json (npm handles both correctly)
