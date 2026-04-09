@@ -405,9 +405,7 @@ const updateInputCycleButton = (context) => {
   const currentLabel = ALL_SOURCES.find(s => s.id === sourceId)?.label ?? sourceId;
   const nextLabel = ALL_SOURCES.find(s => s.id === nextId)?.label ?? "";
 
-  const title = nextLabel
-    ? `${currentLabel}\n→ ${nextLabel}`
-    : currentLabel;
+  const title = currentLabel;
 
   sendToStreamDeck({ event: "setImage", context, payload: { image: getSourceIcon(sourceId), target: 0 } });
   sendToStreamDeck({ event: "setTitle", context, payload: { title, target: 0 } });
