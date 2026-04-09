@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Skip runs triggered by the version bump commit
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,21 +31,35 @@ jobs:
         if: steps.version.outputs.changed == 'false'
         run: echo "No version bump needed" && exit 0
 
-      - name: Stamp version in plugin files
-        if: steps.version.outputs.changed == 'true'
-        env:
-          NEW_VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          cd com.wiim.streamdeck.sdPlugin
-          # manifest.json (user-visible version)
-          sed -i "s/\"Version\": \"[^\"]*\"/\"Version\": \"${NEW_VERSION}\"/" manifest.json
-          # plugin.js header and log message
-          sed -i "s/Plugin v[0-9]\+\.[0-9]\+\.[0-9]\+/Plugin v${NEW_VERSION}/g" plugin.js
-
       - uses: actions/setup-node@v4
         if: steps.version.outputs.changed == 'true'
         with:
           node-version: "20"
+
+      - name: Stamp version in all files
+        if: steps.version.outputs.changed == 'true'
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+        working-directory: com.wiim.streamdeck.sdPlugin
+        run: |
+          # manifest.json
+          sed -i "s/\"Version\": \"[^\"]*\"/\"Version\": \"${NEW_VERSION}\"/" manifest.json
+          # plugin.js header and log message
+          sed -i "s/Plugin v[0-9]\+\.[0-9]\+\.[0-9]\+/Plugin v${NEW_VERSION}/g" plugin.js
+          # package.json + package-lock.json (npm handles both correctly)
+          npm version "${NEW_VERSION}" --no-git-tag-version --allow-same-version
+
+      - name: Commit version bump
+        if: steps.version.outputs.changed == 'true'
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: bump version to ${NEW_VERSION} [skip ci]"
+          git tag "v${NEW_VERSION}"
+          git push origin main --tags
 
       - name: Install dependencies
         if: steps.version.outputs.changed == 'true'
