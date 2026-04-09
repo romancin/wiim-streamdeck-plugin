@@ -35,12 +35,9 @@ jobs:
           NEW_VERSION: ${{ steps.version.outputs.version }}
         run: |
           cd com.wiim.streamdeck.sdPlugin
-          # manifest.json
+          # manifest.json (user-visible version)
           sed -i "s/\"Version\": \"[^\"]*\"/\"Version\": \"${NEW_VERSION}\"/" manifest.json
-          # package.json / package-lock.json
-          sed -i "0,/\"version\": \"[^\"]*\"/s//\"version\": \"${NEW_VERSION}\"/" package.json
-          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${NEW_VERSION}\"/g" package-lock.json
-          # plugin.js header and log
+          # plugin.js header and log message
           sed -i "s/Plugin v[0-9]\+\.[0-9]\+\.[0-9]\+/Plugin v${NEW_VERSION}/g" plugin.js
 
       - uses: actions/setup-node@v4
