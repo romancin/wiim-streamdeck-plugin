@@ -1,0 +1,25 @@
+{
+  "Localization": {
+    "Control your WiiM player directly from Stream Deck": "Controla tu reproductor WiiM directamente desde Stream Deck",
+    "Play / Pause": "Play / Pausa",
+    "Toggle play and pause on your WiiM": "Alterna reproducción y pausa en el WiiM",
+    "Playing": "Reproduciendo",
+    "Paused": "Pausado",
+    "Next Track": "Siguiente pista",
+    "Skip to the next track": "Salta a la siguiente pista",
+    "Previous Track": "Pista anterior",
+    "Go back to the previous track": "Vuelve a la pista anterior",
+    "Volume Up": "Subir volumen",
+    "Increase volume by 5 points": "Sube el volumen 5 puntos",
+    "Volume Down": "Bajar volumen",
+    "Decrease volume by 5 points": "Baja el volumen 5 puntos",
+    "Mute": "Silenciar",
+    "Mute or unmute the audio": "Silencia o activa el audio",
+    "Unmuted": "Con sonido",
+    "Muted": "Silenciado",
+    "Now Playing": "Info canción",
+    "Shows the current song on the button": "Muestra la canción actual en el botón",
+    "Input Cycle": "Ciclo de entradas",
+    "Cycle through configured inputs (WiFi, BT, Line In, Optical, HDMI, USB)": "Cicla entre las entradas configuradas (WiFi, BT, Line In, Optical, HDMI, USB)"
+  }
+}

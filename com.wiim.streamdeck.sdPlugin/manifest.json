@@ -1,0 +1,102 @@
+{
+  "Author": "Román Martín",
+  "CodePath": "plugin.js",
+  "Description": "Control your WiiM player directly from Stream Deck",
+  "Name": "Wiim Controller",
+  "Icon": "imgs/plugin-icon",
+  "Version": "1.0.0",
+  "SDKVersion": 2,
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "Software": {
+    "MinimumVersion": "6.4"
+  },
+  "OS": [
+    { "Platform": "mac", "MinimumVersion": "10.15" },
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Category": "Wiim Controller",
+  "CategoryIcon": "imgs/plugin-icon",
+  "Actions": [
+    {
+      "Icon": "imgs/play-icon",
+      "Name": "Play / Pause",
+      "UUID": "com.wiim.streamdeck.playpause",
+      "Tooltip": "Toggle play and pause on your WiiM",
+      "SupportedInMultiActions": true,
+      "States": [
+        { "Image": "imgs/play-icon", "Name": "Playing" },
+        { "Image": "imgs/pause-icon", "Name": "Paused" }
+      ],
+      "PropertyInspectorPath": "inspector.html"
+    },
+    {
+      "Icon": "imgs/next-icon",
+      "Name": "Next Track",
+      "UUID": "com.wiim.streamdeck.next",
+      "Tooltip": "Skip to the next track",
+      "SupportedInMultiActions": true,
+      "States": [{ "Image": "imgs/next-icon" }],
+      "PropertyInspectorPath": "inspector.html"
+    },
+    {
+      "Icon": "imgs/prev-icon",
+      "Name": "Previous Track",
+      "UUID": "com.wiim.streamdeck.prev",
+      "Tooltip": "Go back to the previous track",
+      "SupportedInMultiActions": true,
+      "States": [{ "Image": "imgs/prev-icon" }],
+      "PropertyInspectorPath": "inspector.html"
+    },
+    {
+      "Icon": "imgs/volup-icon",
+      "Name": "Volume Up",
+      "UUID": "com.wiim.streamdeck.volup",
+      "Tooltip": "Increase volume by 5 points",
+      "SupportedInMultiActions": true,
+      "States": [{ "Image": "imgs/volup-icon" }],
+      "PropertyInspectorPath": "inspector.html"
+    },
+    {
+      "Icon": "imgs/voldown-icon",
+      "Name": "Volume Down",
+      "UUID": "com.wiim.streamdeck.voldown",
+      "Tooltip": "Decrease volume by 5 points",
+      "SupportedInMultiActions": true,
+      "States": [{ "Image": "imgs/voldown-icon" }],
+      "PropertyInspectorPath": "inspector.html"
+    },
+    {
+      "Icon": "imgs/mute-icon",
+      "Name": "Mute",
+      "UUID": "com.wiim.streamdeck.mute",
+      "Tooltip": "Mute or unmute the audio",
+      "SupportedInMultiActions": true,
+      "States": [
+        { "Image": "imgs/mute-icon", "Name": "Unmuted" },
+        { "Image": "imgs/unmute-icon", "Name": "Muted" }
+      ],
+      "PropertyInspectorPath": "inspector.html"
+    },
+    {
+      "Icon": "imgs/info-icon",
+      "Name": "Now Playing",
+      "UUID": "com.wiim.streamdeck.nowplaying",
+      "Tooltip": "Shows the current song on the button",
+      "SupportedInMultiActions": false,
+      "States": [{ "Image": "imgs/info-icon" }],
+      "PropertyInspectorPath": "inspector.html"
+    },
+    {
+      "Icon": "imgs/input-icon",
+      "Name": "Input Cycle",
+      "UUID": "com.wiim.streamdeck.inputcycle",
+      "Tooltip": "Cycle through configured inputs (WiFi, BT, Line In, Optical, HDMI, USB)",
+      "SupportedInMultiActions": true,
+      "States": [{ "Image": "imgs/input-icon" }],
+      "PropertyInspectorPath": "inspector-input.html"
+    }
+  ]
+}

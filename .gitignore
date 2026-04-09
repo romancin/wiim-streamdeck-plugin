@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Build artifacts
+*.streamDeckPlugin
+dist/
+
+# IDE / tool config
+.claude/
+.vscode/
+.idea/
+
+# Debug logs
+wiim-debug.log

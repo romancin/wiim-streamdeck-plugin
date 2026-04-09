@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: com.wiim.streamdeck.sdPlugin
+        run: npm ci --production
+
+      - name: Package plugin
+        run: |
+          zip -r com.wiim.streamdeck.streamDeckPlugin \
+            com.wiim.streamdeck.sdPlugin/ \
+            -x "*.DS_Store"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: com.wiim.streamdeck.streamDeckPlugin
+          generate_release_notes: true

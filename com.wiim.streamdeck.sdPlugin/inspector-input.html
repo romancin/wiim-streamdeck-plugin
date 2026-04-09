@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Input Cycle</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      color: #c8c8c8;
+      background: #2d2d2d;
+      padding: 10px;
+    }
+
+    h4 {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      margin: 14px 0 8px;
+    }
+    h4:first-child { margin-top: 4px; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .row label { min-width: 80px; color: #a0a0a0; font-size: 12px; }
+    input[type="text"] {
+      flex: 1;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 5px 8px;
+      font-size: 13px;
+    }
+    input[type="text"]:focus { outline: none; border-color: #4a90e2; }
+
+    #source-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    #source-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #222;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 7px 10px;
+      cursor: grab;
+      user-select: none;
+      transition: background 0.1s, border-color 0.1s;
+    }
+    #source-list li:active { cursor: grabbing; }
+    #source-list li.dragging { opacity: 0.45; border-color: #4a90e2; }
+    #source-list li.drag-over { background: #2a3a4a; border-color: #4a90e2; }
+    #source-list li.active-source { border-color: #6fcf97; }
+
+    .drag-handle { color: #555; font-size: 14px; line-height: 1; flex-shrink: 0; }
+    .source-checkbox { width: 15px; height: 15px; accent-color: #4a90e2; flex-shrink: 0; cursor: pointer; }
+    .source-label { flex: 1; font-size: 13px; color: #d0d0d0; }
+    #source-list li.active-source .source-label::after { content: " \u25CF"; color: #6fcf97; font-size: 10px; }
+    .source-order { font-size: 11px; color: #555; min-width: 18px; text-align: right; }
+
+    .btn-row { display: flex; gap: 6px; margin-top: 10px; }
+    .btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; }
+    .btn-primary  { background: #4a90e2; color: #fff; }
+    .btn-primary:hover  { background: #357abd; }
+    .btn-secondary { background: #3a3a3a; color: #bbb; }
+    .btn-secondary:hover { background: #4a4a4a; }
+
+    .status { margin-top: 8px; font-size: 12px; min-height: 16px; color: #888; }
+    .status.ok  { color: #6fcf97; }
+    .status.err { color: #eb5757; }
+
+    .hint { font-size: 11px; color: #555; margin-top: 6px; line-height: 1.5; }
+
+    hr { border: none; border-top: 1px solid #3a3a3a; margin: 12px 0; }
+  </style>
+</head>
+<body>
+
+<h4 data-i18n="sectionPlayer">WiiM Player</h4>
+<div class="row">
+  <label for="wiimIP" data-i18n="labelIP">WiiM IP</label>
+  <input type="text" id="wiimIP" placeholder="192.168.1.100" spellcheck="false" autocomplete="off"/>
+</div>
+<div style="display:flex;gap:6px;margin-bottom:4px">
+  <button class="btn btn-secondary" id="btnTest" data-i18n="btnTest">Test</button>
+</div>
+<div class="status" id="connStatus"></div>
+
+<hr>
+
+<h4 data-i18n="sectionInputs">Cycle Inputs</h4>
+<p class="hint" style="margin-bottom:8px" data-i18n="hintInputs">Check the inputs to include. Drag to reorder.</p>
+
+<ul id="source-list"></ul>
+
+<div class="btn-row">
+  <button class="btn btn-primary" id="btnSave" data-i18n="btnSave">Save</button>
+</div>
+<div class="status" id="saveStatus"></div>
+
+<script>
+// ─── i18n ────────────────────────────────────────────────────────────────────
+const LANG = navigator.language?.startsWith("es") ? "es" : "en";
+const STRINGS = {
+  en: {
+    sectionPlayer: "WiiM Player",
+    labelIP: "WiiM IP",
+    btnTest: "Test",
+    btnSave: "Save",
+    sectionInputs: "Cycle Inputs",
+    hintInputs: "Check the inputs to include. Drag to reorder.",
+    testing: "Testing\u2026",
+    enterIP: "Enter the IP first",
+    enterIPToSave: "Enter the WiiM IP",
+    selectOne: "Select at least one input",
+    saved: (n) => `\u2705 Saved (${n} inputs in cycle)`,
+  },
+  es: {
+    sectionPlayer: "Reproductor WiiM",
+    labelIP: "IP del WiiM",
+    btnTest: "Probar",
+    btnSave: "Guardar",
+    sectionInputs: "Entradas del ciclo",
+    hintInputs: "Marca las entradas que quieres incluir. Arrastra para cambiar el orden.",
+    testing: "Probando\u2026",
+    enterIP: "Introduce la IP primero",
+    enterIPToSave: "Introduce la IP del WiiM",
+    selectOne: "Selecciona al menos una entrada",
+    saved: (n) => `\u2705 Guardado (${n} entradas en ciclo)`,
+  },
+};
+const s = (key) => STRINGS[LANG]?.[key] ?? STRINGS.en[key] ?? key;
+
+document.querySelectorAll("[data-i18n]").forEach(el => {
+  const key = el.getAttribute("data-i18n");
+  const val = s(key);
+  if (typeof val === "string") el.textContent = val;
+});
+
+// ─── Source catalog ──────────────────────────────────────────────────────────
+const ALL_SOURCES = [
+  { id: "wifi",      label: "WiFi / Streaming" },
+  { id: "bluetooth", label: "Bluetooth"         },
+  { id: "linein",    label: "Line In"           },
+  { id: "optical",   label: "Optical (TOSLINK)" },
+  { id: "hdmi",      label: "HDMI ARC"          },
+  { id: "usb",       label: "USB"               },
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let actionUUID    = "";
+let currentSourceId = "";
+let rowOrder = ALL_SOURCES.map(s => s.id);
+let enabled  = new Set(ALL_SOURCES.map(s => s.id));
+
+// ─── Stream Deck connection ──────────────────────────────────────────────────
+let sdWS;
+
+let actionAction = "";
+function connectElgatoStreamDeckSocket(port, uuid, registerEvent, info, actionInfoRaw) {
+  const actionInfo = JSON.parse(actionInfoRaw);
+  actionUUID = uuid;
+  actionAction = actionInfo.action;
+
+  sdWS = new WebSocket(`ws://127.0.0.1:${port}`);
+  sdWS.onopen = () => {
+    sdWS.send(JSON.stringify({ event: registerEvent, uuid }));
+    sdWS.send(JSON.stringify({ event: "getSettings", context: uuid }));
+    sendToPlugin({ event: "getSources" });
+  };
+  sdWS.onmessage = (evt) => {
+    const data = JSON.parse(evt.data);
+    if (data.event === "didReceiveSettings")       loadSettings(data.payload?.settings ?? {});
+    if (data.event === "sendToPropertyInspector")  handlePluginMsg(data.payload);
+  };
+}
+
+const sendToPlugin = (payload) => {
+  if (sdWS?.readyState === WebSocket.OPEN) {
+    sdWS.send(JSON.stringify({
+      event: "sendToPlugin",
+      action: actionAction,
+      context: actionUUID,
+      payload,
+    }));
+  }
+};
+
+// ─── Load settings ───────────────────────────────────────────────────────────
+const loadSettings = (settings) => {
+  if (settings.wiimIP) document.getElementById("wiimIP").value = settings.wiimIP;
+
+  if (Array.isArray(settings.enabledSources) && settings.enabledSources.length > 0) {
+    const savedIds  = settings.enabledSources;
+    const restIds   = ALL_SOURCES.map(s => s.id).filter(id => !savedIds.includes(id));
+    rowOrder = [...savedIds, ...restIds];
+    enabled  = new Set(savedIds);
+  }
+
+  renderList();
+};
+
+const handlePluginMsg = (payload) => {
+  if (payload?.event === "sourceCatalog") {
+    currentSourceId = payload.currentSourceId ?? "";
+    renderList();
+  }
+  if (payload?.event === "testResult") {
+    showStatus("connStatus", payload.message, payload.success ? "ok" : "err");
+  }
+};
+
+// ─── Render source list ──────────────────────────────────────────────────────
+const renderList = () => {
+  const ul = document.getElementById("source-list");
+  ul.innerHTML = "";
+
+  rowOrder.forEach((id, idx) => {
+    const src  = ALL_SOURCES.find(s => s.id === id);
+    if (!src) return;
+    const isEnabled = enabled.has(id);
+    const isActive  = id === currentSourceId;
+
+    const li = document.createElement("li");
+    li.dataset.id = id;
+    if (isActive) li.classList.add("active-source");
+
+    li.innerHTML = `
+      <span class="drag-handle">\u2807</span>
+      <input type="checkbox" class="source-checkbox" ${isEnabled ? "checked" : ""}/>
+      <span class="source-label">${src.label}</span>
+      <span class="source-order">${isEnabled ? idx + 1 : "\u2013"}</span>
+    `;
+
+    li.querySelector(".source-checkbox").addEventListener("change", (e) => {
+      if (e.target.checked) enabled.add(id); else enabled.delete(id);
+      updateOrderNumbers();
+    });
+
+    attachDragHandlers(li);
+    ul.appendChild(li);
+  });
+};
+
+const updateOrderNumbers = () => {
+  let n = 1;
+  document.querySelectorAll("#source-list li").forEach(li => {
+    const chk = li.querySelector(".source-checkbox");
+    li.querySelector(".source-order").textContent = (chk?.checked) ? n++ : "\u2013";
+  });
+};
+
+// ─── Drag & Drop ─────────────────────────────────────────────────────────────
+let dragSrc = null;
+
+const attachDragHandlers = (li) => {
+  li.setAttribute("draggable", "true");
+  li.addEventListener("dragstart", () => { dragSrc = li; setTimeout(() => li.classList.add("dragging"), 0); });
+  li.addEventListener("dragend", () => {
+    li.classList.remove("dragging");
+    document.querySelectorAll("#source-list li").forEach(el => el.classList.remove("drag-over"));
+    syncOrderFromDOM();
+    dragSrc = null;
+  });
+  li.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (li === dragSrc) return;
+    document.querySelectorAll("#source-list li").forEach(el => el.classList.remove("drag-over"));
+    li.classList.add("drag-over");
+  });
+  li.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (li === dragSrc) return;
+    const ul = document.getElementById("source-list");
+    const items = [...ul.querySelectorAll("li")];
+    const fromIdx = items.indexOf(dragSrc);
+    const toIdx   = items.indexOf(li);
+    if (fromIdx < toIdx) ul.insertBefore(dragSrc, li.nextSibling);
+    else                 ul.insertBefore(dragSrc, li);
+  });
+};
+
+const syncOrderFromDOM = () => {
+  rowOrder = [...document.querySelectorAll("#source-list li")].map(li => li.dataset.id);
+  updateOrderNumbers();
+};
+
+// ─── Save ────────────────────────────────────────────────────────────────────
+document.getElementById("btnSave").addEventListener("click", () => {
+  syncOrderFromDOM();
+  const wiimIP = document.getElementById("wiimIP").value.trim();
+  const enabledSources = rowOrder.filter(id => enabled.has(id));
+
+  if (!wiimIP) { showStatus("saveStatus", s("enterIPToSave"), "err"); return; }
+  if (enabledSources.length === 0) { showStatus("saveStatus", s("selectOne"), "err"); return; }
+
+  sendToPlugin({ event: "saveSettings", wiimIP, enabledSources });
+  showStatus("saveStatus", s("saved")(enabledSources.length), "ok");
+});
+
+document.getElementById("btnTest").addEventListener("click", () => {
+  const wiimIP = document.getElementById("wiimIP").value.trim();
+  if (!wiimIP) { showStatus("connStatus", s("enterIP"), "err"); return; }
+  showStatus("connStatus", s("testing"), "");
+  sendToPlugin({ event: "testConnection", wiimIP });
+});
+
+// ─── Utility ─────────────────────────────────────────────────────────────────
+const showStatus = (elId, msg, type) => {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.className = "status " + (type ?? "");
+  if (type === "ok") setTimeout(() => { el.textContent = ""; el.className = "status"; }, 3000);
+};
+
+renderList();
+</script>
+</body>
+</html>

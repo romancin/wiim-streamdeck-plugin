@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Wiim Controller</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      color: #c8c8c8;
+      background: #2d2d2d;
+      margin: 0;
+      padding: 0;
+    }
+    .sdpi-wrapper {
+      padding: 8px;
+    }
+    .sdpi-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    .sdpi-item-label {
+      min-width: 100px;
+      color: #a0a0a0;
+      font-size: 12px;
+    }
+    .sdpi-item-value {
+      flex: 1;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 5px 8px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    input:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+    .btn {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background: #4a90e2;
+      color: white;
+    }
+    .btn-primary:hover { background: #357abd; }
+    .btn-secondary {
+      background: #444;
+      color: #ccc;
+    }
+    .btn-secondary:hover { background: #555; }
+    .status-msg {
+      margin-top: 6px;
+      font-size: 12px;
+      min-height: 16px;
+      color: #a0a0a0;
+    }
+    .status-msg.ok { color: #6fcf97; }
+    .status-msg.err { color: #eb5757; }
+    .divider {
+      border: none;
+      border-top: 1px solid #444;
+      margin: 10px 0;
+    }
+    .hint {
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+    }
+    h4 {
+      color: #888;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 14px 0 6px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+<div class="sdpi-wrapper">
+
+  <h4 data-i18n="sectionPlayer">WiiM Player</h4>
+
+  <div class="sdpi-item">
+    <label class="sdpi-item-label" for="wiimIP" data-i18n="labelIP">WiiM IP</label>
+    <div class="sdpi-item-value">
+      <input type="text" id="wiimIP" placeholder="192.168.1.100" autocomplete="off" spellcheck="false"/>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:6px;margin-bottom:4px;">
+    <button class="btn btn-secondary" id="btnTest" data-i18n="btnTest">Test Connection</button>
+    <button class="btn btn-primary" id="btnSave" data-i18n="btnSave">Save</button>
+  </div>
+  <div class="status-msg" id="statusMsg"></div>
+
+  <p class="hint" data-i18n="hintIP">Find the IP in the WiiM Home app → (your device) → Settings → Device Information.</p>
+
+  <hr class="divider">
+
+  <h4 data-i18n="sectionVolume">Volume Options</h4>
+  <div class="sdpi-item">
+    <label class="sdpi-item-label" for="volumeStep" data-i18n="labelVolumeStep">Volume Step</label>
+    <div class="sdpi-item-value">
+      <input type="number" id="volumeStep" min="1" max="20" value="5" style="width:60px;"/>
+      <span style="margin-left:6px;color:#666;font-size:12px;">%</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <p class="hint" id="hintHowTo"></p>
+
+</div>
+
+<script>
+  // ─── i18n ──────────────────────────────────────────────────────────────────
+  const LANG = navigator.language?.startsWith("es") ? "es" : "en";
+  const STRINGS = {
+    en: {
+      sectionPlayer: "WiiM Player",
+      labelIP: "WiiM IP",
+      btnTest: "Test Connection",
+      btnSave: "Save",
+      hintIP: "Find the IP in the WiiM Home app \u2192 (your device) \u2192 Settings \u2192 Device Information.",
+      sectionVolume: "Volume Options",
+      labelVolumeStep: "Volume Step",
+      hintHowTo: '<strong style="color:#888">How to find the IP:</strong><br>1. Open the <em>WiiM Home</em> app<br>2. Tap your device \u2192 \u2699\uFE0F Settings<br>3. Go to "Device Information"<br>4. Copy the IP address shown',
+      testing: "Testing connection\u2026",
+      enterIP: "Enter the WiiM IP first",
+      saved: "\u2705 Saved",
+      enterIPToSave: "Enter the WiiM IP",
+    },
+    es: {
+      sectionPlayer: "Reproductor WiiM",
+      labelIP: "IP del WiiM",
+      btnTest: "Probar conexi\u00f3n",
+      btnSave: "Guardar",
+      hintIP: "Busca la IP en la app WiiM Home \u2192 (tu dispositivo) \u2192 Ajustes \u2192 Informaci\u00f3n del dispositivo.",
+      sectionVolume: "Opciones de volumen",
+      labelVolumeStep: "Paso de volumen",
+      hintHowTo: '<strong style="color:#888">C\u00f3mo encontrar la IP:</strong><br>1. Abre la app <em>WiiM Home</em><br>2. Pulsa en tu dispositivo \u2192 \u2699\uFE0F Ajustes<br>3. Ve a "Informaci\u00f3n del dispositivo"<br>4. Copia la direcci\u00f3n IP que aparece',
+      testing: "Probando conexi\u00f3n\u2026",
+      enterIP: "Introduce la IP primero",
+      saved: "\u2705 Guardado",
+      enterIPToSave: "Introduce la IP del WiiM",
+    },
+  };
+  const s = (key) => STRINGS[LANG]?.[key] ?? STRINGS.en[key] ?? key;
+
+  // Apply data-i18n attributes
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    el.textContent = s(key);
+  });
+  document.getElementById("hintHowTo").innerHTML = s("hintHowTo");
+
+  // ─── Stream Deck connection ────────────────────────────────────────────────
+  let actionInfo = {};
+  let settingsCache = {};
+  let sdWS;
+
+  let piUUID;
+  function connectElgatoStreamDeckSocket(port, uuid, registerEvent, info, actionInfoRaw) {
+    piUUID = uuid;
+    actionInfo = JSON.parse(actionInfoRaw);
+    settingsCache = actionInfo.payload?.settings ?? {};
+
+    sdWS = new WebSocket(`ws://127.0.0.1:${port}`);
+    sdWS.onopen = () => {
+      sdWS.send(JSON.stringify({ event: registerEvent, uuid }));
+      sdWS.send(JSON.stringify({ event: "getSettings", context: uuid }));
+    };
+    sdWS.onmessage = (evt) => {
+      const data = JSON.parse(evt.data);
+      if (data.event === "didReceiveSettings") {
+        loadSettings(data.payload?.settings ?? {});
+      }
+      if (data.event === "sendToPropertyInspector") {
+        handlePluginMessage(data.payload);
+      }
+    };
+  }
+
+  const sendToPlugin = (payload) => {
+    if (sdWS?.readyState === WebSocket.OPEN) {
+      sdWS.send(JSON.stringify({
+        event: "sendToPlugin",
+        action: actionInfo.action,
+        context: piUUID,
+        payload,
+      }));
+    }
+  };
+
+  // ─── UI ───────────────────────────────────────────────────────────────────
+  const loadSettings = (settings) => {
+    if (settings.wiimIP) document.getElementById("wiimIP").value = settings.wiimIP;
+    if (settings.volumeStep) document.getElementById("volumeStep").value = settings.volumeStep;
+  };
+
+  document.getElementById("btnSave").addEventListener("click", () => {
+    const wiimIP = document.getElementById("wiimIP").value.trim();
+    const volumeStep = parseInt(document.getElementById("volumeStep").value, 10) || 5;
+    if (!wiimIP) {
+      showStatus(s("enterIPToSave"), "err");
+      return;
+    }
+    sendToPlugin({ event: "saveSettings", wiimIP, volumeStep });
+    showStatus(s("saved"), "ok");
+  });
+
+  document.getElementById("btnTest").addEventListener("click", () => {
+    const wiimIP = document.getElementById("wiimIP").value.trim();
+    if (!wiimIP) { showStatus(s("enterIP"), "err"); return; }
+    showStatus(s("testing"), "");
+    sendToPlugin({ event: "testConnection", wiimIP });
+  });
+
+  const handlePluginMessage = (payload) => {
+    if (payload?.event === "testResult") {
+      showStatus(payload.message, payload.success ? "ok" : "err");
+    }
+  };
+
+  const showStatus = (msg, type) => {
+    const el = document.getElementById("statusMsg");
+    el.textContent = msg;
+    el.className = "status-msg " + (type || "");
+    if (type === "ok") setTimeout(() => { el.textContent = ""; el.className = "status-msg"; }, 3000);
+  };
+</script>
+</body>
+</html>
