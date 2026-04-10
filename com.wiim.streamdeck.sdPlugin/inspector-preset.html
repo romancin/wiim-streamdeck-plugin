@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Preset</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      color: #c8c8c8;
+      background: #2d2d2d;
+      padding: 10px;
+    }
+
+    h4 {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      margin: 14px 0 8px;
+    }
+    h4:first-child { margin-top: 4px; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .row label { min-width: 80px; color: #a0a0a0; font-size: 12px; }
+    input[type="text"] {
+      flex: 1;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 5px 8px;
+      font-size: 13px;
+    }
+    input[type="text"]:focus { outline: none; border-color: #4a90e2; }
+
+    select {
+      flex: 1;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 5px 8px;
+      font-size: 13px;
+    }
+    select:focus { outline: none; border-color: #4a90e2; }
+
+    .btn-row { display: flex; gap: 6px; margin-top: 10px; }
+    .btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; }
+    .btn-primary  { background: #4a90e2; color: #fff; }
+    .btn-primary:hover  { background: #357abd; }
+    .btn-secondary { background: #3a3a3a; color: #bbb; }
+    .btn-secondary:hover { background: #4a4a4a; }
+
+    .status { margin-top: 8px; font-size: 12px; min-height: 16px; color: #888; }
+    .status.ok  { color: #6fcf97; }
+    .status.err { color: #eb5757; }
+
+    .hint { font-size: 11px; color: #555; margin-top: 6px; line-height: 1.5; }
+
+    hr { border: none; border-top: 1px solid #3a3a3a; margin: 12px 0; }
+
+    .preset-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #222;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s, border-color 0.1s;
+      margin-bottom: 4px;
+    }
+    .preset-item:hover { background: #2a2a3a; }
+    .preset-item.selected { border-color: #4a90e2; background: #1a2a3a; }
+    .preset-item.empty { opacity: 0.4; cursor: default; }
+    .preset-num { font-size: 14px; font-weight: 600; color: #4a90e2; min-width: 22px; text-align: center; }
+    .preset-info { flex: 1; }
+    .preset-name { font-size: 13px; color: #d0d0d0; }
+    .preset-source { font-size: 11px; color: #777; margin-top: 2px; }
+    .preset-check { font-size: 14px; min-width: 18px; text-align: center; color: #4a90e2; }
+  </style>
+</head>
+<body>
+
+<h4 data-i18n="sectionPlayer">WiiM Player</h4>
+<div class="row">
+  <label for="wiimIP" data-i18n="labelIP">WiiM IP</label>
+  <input type="text" id="wiimIP" placeholder="192.168.1.100" spellcheck="false" autocomplete="off"/>
+</div>
+<div style="display:flex;gap:6px;margin-bottom:4px">
+  <button class="btn btn-secondary" id="btnTest" data-i18n="btnTest">Test</button>
+  <button class="btn btn-secondary" id="btnRefresh" data-i18n="btnRefresh">Refresh Presets</button>
+</div>
+<div class="status" id="connStatus"></div>
+
+<hr>
+
+<h4 data-i18n="sectionPreset">Select Preset</h4>
+<p class="hint" style="margin-bottom:8px" data-i18n="hintPreset">Choose a preset to trigger when this button is pressed. Configure presets in the WiiM Home app.</p>
+
+<div id="preset-list"></div>
+
+<div class="btn-row">
+  <button class="btn btn-primary" id="btnSave" data-i18n="btnSave">Save</button>
+</div>
+<div class="status" id="saveStatus"></div>
+
+<script>
+// ─── i18n ────────────────────────────────────────────────────────────────────
+const LANG = navigator.language?.startsWith("es") ? "es" : "en";
+const STRINGS = {
+  en: {
+    sectionPlayer: "WiiM Player",
+    labelIP: "WiiM IP",
+    btnTest: "Test",
+    btnRefresh: "Refresh Presets",
+    btnSave: "Save",
+    sectionPreset: "Select Preset",
+    hintPreset: "Choose a preset to trigger when this button is pressed. Configure presets in the WiiM Home app.",
+    testing: "Testing\u2026",
+    enterIP: "Enter the IP first",
+    enterIPToSave: "Enter the WiiM IP",
+    selectPreset: "Select a preset",
+    saved: "\u2705 Saved",
+    loading: "Loading presets\u2026",
+    noPresets: "No presets configured. Set them up in the WiiM Home app.",
+    presetsFound: (n) => `\u2705 ${n} preset${n === 1 ? "" : "s"} found`,
+    emptySlot: "Empty",
+    refreshing: "Refreshing\u2026",
+  },
+  es: {
+    sectionPlayer: "Reproductor WiiM",
+    labelIP: "IP del WiiM",
+    btnTest: "Probar",
+    btnRefresh: "Actualizar Presets",
+    btnSave: "Guardar",
+    sectionPreset: "Seleccionar Preset",
+    hintPreset: "Elige un preset para activar al pulsar este bot\u00f3n. Configura los presets en la app WiiM Home.",
+    testing: "Probando\u2026",
+    enterIP: "Introduce la IP primero",
+    enterIPToSave: "Introduce la IP del WiiM",
+    selectPreset: "Selecciona un preset",
+    saved: "\u2705 Guardado",
+    loading: "Cargando presets\u2026",
+    noPresets: "No hay presets configurados. Config\u00faralos en la app WiiM Home.",
+    presetsFound: (n) => `\u2705 ${n} preset${n === 1 ? "" : "s"} encontrado${n === 1 ? "" : "s"}`,
+    emptySlot: "Vac\u00edo",
+    refreshing: "Actualizando\u2026",
+  },
+};
+const s = (key) => STRINGS[LANG]?.[key] ?? STRINGS.en[key] ?? key;
+
+document.querySelectorAll("[data-i18n]").forEach(el => {
+  const key = el.getAttribute("data-i18n");
+  const val = s(key);
+  if (typeof val === "string") el.textContent = val;
+});
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let actionUUID = "";
+let actionAction = "";
+let selectedPreset = null;
+let presets = [];
+
+// ─── Stream Deck connection ──────────────────────────────────────────────────
+let sdWS;
+
+function connectElgatoStreamDeckSocket(port, uuid, registerEvent, info, actionInfoRaw) {
+  const actionInfo = JSON.parse(actionInfoRaw);
+  actionUUID = uuid;
+  actionAction = actionInfo.action;
+
+  sdWS = new WebSocket(`ws://127.0.0.1:${port}`);
+  sdWS.onopen = () => {
+    sdWS.send(JSON.stringify({ event: registerEvent, uuid }));
+    sdWS.send(JSON.stringify({ event: "getSettings", context: uuid }));
+    sendToPlugin({ event: "getPresets" });
+  };
+  sdWS.onmessage = (evt) => {
+    const data = JSON.parse(evt.data);
+    if (data.event === "didReceiveSettings")       loadSettings(data.payload?.settings ?? {});
+    if (data.event === "sendToPropertyInspector")  handlePluginMsg(data.payload);
+  };
+}
+
+const sendToPlugin = (payload) => {
+  if (sdWS?.readyState === WebSocket.OPEN) {
+    sdWS.send(JSON.stringify({
+      event: "sendToPlugin",
+      action: actionAction,
+      context: actionUUID,
+      payload,
+    }));
+  }
+};
+
+// ─── Load settings ───────────────────────────────────────────────────────────
+const loadSettings = (settings) => {
+  if (settings.wiimIP) document.getElementById("wiimIP").value = settings.wiimIP;
+  if (settings.presetNumber) {
+    selectedPreset = settings.presetNumber;
+    renderList();
+  }
+};
+
+const handlePluginMsg = (payload) => {
+  if (payload?.event === "presetCatalog") {
+    presets = payload.presets ?? [];
+    renderList();
+    const count = payload.count ?? presets.length;
+    if (count > 0) {
+      showStatus("connStatus", s("presetsFound")(count), "ok");
+    } else {
+      showStatus("connStatus", s("noPresets"), "err");
+    }
+  }
+  if (payload?.event === "testResult") {
+    showStatus("connStatus", payload.message, payload.success ? "ok" : "err");
+  }
+};
+
+// ─── Render preset list ──────────────────────────────────────────────────────
+const renderList = () => {
+  const container = document.getElementById("preset-list");
+  container.innerHTML = "";
+
+  // Show slots 1-12; fill in names from fetched presets
+  for (let n = 1; n <= 12; n++) {
+    const preset = presets.find(p => p.number === n);
+    const div = document.createElement("div");
+    div.className = "preset-item" + (selectedPreset === n ? " selected" : "") + (!preset ? " empty" : "");
+
+    const name = preset ? preset.name : s("emptySlot");
+    const source = preset?.source ?? "";
+
+    div.innerHTML = `
+      <span class="preset-num">${n}</span>
+      <div class="preset-info">
+        <div class="preset-name">${escapeHtml(name)}</div>
+        ${source ? `<div class="preset-source">${escapeHtml(source)}</div>` : ""}
+      </div>
+      <span class="preset-check">${selectedPreset === n ? "\u2713" : ""}</span>
+    `;
+
+    if (preset) {
+      div.addEventListener("click", () => {
+        selectedPreset = n;
+        renderList();
+      });
+    }
+
+    container.appendChild(div);
+  }
+};
+
+// ─── Save ────────────────────────────────────────────────────────────────────
+document.getElementById("btnSave").addEventListener("click", () => {
+  const wiimIP = document.getElementById("wiimIP").value.trim();
+  if (!wiimIP) { showStatus("saveStatus", s("enterIPToSave"), "err"); return; }
+  if (!selectedPreset) { showStatus("saveStatus", s("selectPreset"), "err"); return; }
+
+  sendToPlugin({ event: "savePresetSettings", wiimIP, presetNumber: selectedPreset });
+  showStatus("saveStatus", s("saved"), "ok");
+});
+
+document.getElementById("btnTest").addEventListener("click", () => {
+  const wiimIP = document.getElementById("wiimIP").value.trim();
+  if (!wiimIP) { showStatus("connStatus", s("enterIP"), "err"); return; }
+  showStatus("connStatus", s("testing"), "");
+  sendToPlugin({ event: "testConnection", wiimIP });
+});
+
+document.getElementById("btnRefresh").addEventListener("click", () => {
+  showStatus("connStatus", s("refreshing"), "");
+  sendToPlugin({ event: "getPresets" });
+});
+
+// ─── Utility ─────────────────────────────────────────────────────────────────
+const showStatus = (elId, msg, type) => {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.className = "status " + (type ?? "");
+  if (type === "ok") setTimeout(() => { el.textContent = ""; el.className = "status"; }, 3000);
+};
+
+const escapeHtml = (str) =>
+  str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+renderList();
+</script>
+</body>
+</html>

@@ -97,6 +97,24 @@
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/input-icon" }],
       "PropertyInspectorPath": "inspector-input.html"
+    },
+    {
+      "Icon": "imgs/preset-icon",
+      "Name": "Preset",
+      "UUID": "com.wiim.streamdeck.preset",
+      "Tooltip": "Play a WiiM preset (configured in WiiM Home app)",
+      "SupportedInMultiActions": true,
+      "States": [{ "Image": "imgs/preset-icon" }],
+      "PropertyInspectorPath": "inspector-preset.html"
+    },
+    {
+      "Icon": "imgs/output-icon",
+      "Name": "Output Cycle",
+      "UUID": "com.wiim.streamdeck.outputcycle",
+      "Tooltip": "Cycle through audio outputs (Optical, Line Out, Coaxial)",
+      "SupportedInMultiActions": true,
+      "States": [{ "Image": "imgs/output-icon" }],
+      "PropertyInspectorPath": "inspector-output.html"
     }
   ]
 }

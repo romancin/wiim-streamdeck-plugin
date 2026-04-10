@@ -46,6 +46,29 @@ const MODE_TO_ID = {
   udisk: "usb", usb: "usb",
 };
 
+// ─── Output catalog ─────────────────────────────────────────────────────────
+
+const ALL_OUTPUTS = [
+  { id: "optical", hw: 1, label: "Optical (SPDIF)", cmd: "setAudioOutputHardwareMode:1" },
+  { id: "lineout", hw: 2, label: "Line Out",        cmd: "setAudioOutputHardwareMode:2" },
+  { id: "coaxial", hw: 3, label: "Coaxial",         cmd: "setAudioOutputHardwareMode:3" },
+];
+
+const HW_TO_OUTPUT_ID = { 1: "optical", 2: "lineout", 3: "coaxial" };
+
+// SVG icons for each output (144x144, white on dark)
+const OUTPUT_ICONS = {
+  optical: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)" fill="none" stroke="#e27a4a" stroke-width="5"><rect x="-24" y="-24" width="48" height="48" rx="8"/><circle cx="0" cy="0" r="10"/><circle cx="0" cy="0" r="3" fill="#e27a4a" stroke="none"/></g></svg>`,
+  lineout: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)" fill="none" stroke="#e27a4a" stroke-width="5" stroke-linecap="round"><line x1="0" y1="-38" x2="0" y2="-10"/><rect x="-12" y="-10" width="24" height="30" rx="4"/><line x1="-8" y1="20" x2="-8" y2="38"/><line x1="8" y1="20" x2="8" y2="38"/></g></svg>`,
+  coaxial: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)" fill="none" stroke="#e27a4a" stroke-width="5"><circle cx="0" cy="0" r="24"/><circle cx="0" cy="0" r="8"/><circle cx="0" cy="0" r="3" fill="#e27a4a" stroke="none"/></g></svg>`,
+};
+
+const getOutputIcon = (outputId) => {
+  const svg = OUTPUT_ICONS[outputId];
+  if (!svg) return null;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+};
+
 // ─── Global state ────────────────────────────────────────────────────────────
 
 const state = {
@@ -59,8 +82,12 @@ const state = {
   currentAlbumArtURI: "",
   currentAlbumArtB64: null,
   currentSourceId: "wifi",
+  currentOutputId: "optical",
   pollInterval: null,
   cycleSettings: {},
+  outputCycleSettings: {},
+  presets: [],
+  presetSettings: {},
   contexts: {
     playpause:  new Set(),
     next:       new Set(),
@@ -70,6 +97,8 @@ const state = {
     mute:       new Set(),
     nowplaying: new Set(),
     inputcycle: new Set(),
+    preset:     new Set(),
+    outputcycle: new Set(),
   },
 };
 
@@ -92,11 +121,13 @@ const SD_LANG = SD_INFO.application?.language?.startsWith("es") ? "es" : "en";
 const I18N = {
   en: {
     noPlayback: "No playback",
+    noPreset: "No preset",
     connected: "Connected",
     connectFailed: "Could not connect. Check the IP.",
   },
   es: {
     noPlayback: "Sin reproducción",
+    noPreset: "Sin preset",
     connected: "Conectado",
     connectFailed: "No se pudo conectar. Revisa la IP.",
   },
@@ -137,6 +168,8 @@ const ACTION_KEY = {
   "com.wiim.streamdeck.mute":       "mute",
   "com.wiim.streamdeck.nowplaying": "nowplaying",
   "com.wiim.streamdeck.inputcycle": "inputcycle",
+  "com.wiim.streamdeck.preset":      "preset",
+  "com.wiim.streamdeck.outputcycle": "outputcycle",
 };
 
 const handleStreamDeckEvent = ({ event, action, context, payload }) => {
@@ -171,6 +204,12 @@ const registerContext = (action, context, settings) => {
   if (key === "inputcycle" && settings?.enabledSources) {
     state.cycleSettings[context] = settings.enabledSources;
   }
+  if (key === "preset" && settings?.presetNumber) {
+    state.presetSettings[context] = settings.presetNumber;
+  }
+  if (key === "outputcycle" && settings?.enabledOutputs) {
+    state.outputCycleSettings[context] = settings.enabledOutputs;
+  }
   sendToStreamDeck({ event: "getSettings", context });
 };
 
@@ -178,6 +217,8 @@ const unregisterContext = (action, context) => {
   const key = ACTION_KEY[action];
   if (key) state.contexts[key].delete(context);
   if (key === "inputcycle") delete state.cycleSettings[context];
+  if (key === "preset") delete state.presetSettings[context];
+  if (key === "outputcycle") delete state.outputCycleSettings[context];
   const total = Object.values(state.contexts).reduce((s, c) => s + c.size, 0);
   if (total === 0 && state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
 };
@@ -188,6 +229,14 @@ const applyButtonSettings = (action, context, settings) => {
   if (ACTION_KEY[action] === "inputcycle" && Array.isArray(settings.enabledSources)) {
     state.cycleSettings[context] = settings.enabledSources;
     updateInputCycleButton(context);
+  }
+  if (ACTION_KEY[action] === "preset" && settings.presetNumber) {
+    state.presetSettings[context] = settings.presetNumber;
+    updatePresetButton(context);
+  }
+  if (ACTION_KEY[action] === "outputcycle" && Array.isArray(settings.enabledOutputs)) {
+    state.outputCycleSettings[context] = settings.enabledOutputs;
+    updateOutputCycleButton(context);
   }
 };
 
@@ -211,7 +260,13 @@ const handleKeyDown = async (action, context, payload) => {
       break;
     }
     case "mute":       await wiim_toggleMute(); break;
-    case "inputcycle": await wiim_cycleInput(context); break;
+    case "inputcycle":  await wiim_cycleInput(context); break;
+    case "outputcycle": await wiim_cycleOutput(context); break;
+    case "preset": {
+      const num = state.presetSettings[context] ?? payload?.settings?.presetNumber;
+      if (num) await wiimCmd(`MCUKeyShortClick:${num}`);
+      break;
+    }
   }
   await updateWiimState();
 };
@@ -259,6 +314,74 @@ const wiim_cycleInput = async (context) => {
   await wiimCmd(source.cmd);
   state.currentSourceId = nextId;
   updateInputCycleButton(context);
+};
+
+// ─── Output Cycle ───────────────────────────────────────────────────────────
+
+const wiim_cycleOutput = async (context) => {
+  const enabledIds = state.outputCycleSettings[context] ?? ALL_OUTPUTS.map(o => o.id);
+  if (enabledIds.length === 0) return;
+
+  const currentIdx = enabledIds.indexOf(state.currentOutputId);
+  const nextIdx    = (currentIdx + 1) % enabledIds.length;
+  const nextId     = enabledIds[nextIdx];
+
+  const output = ALL_OUTPUTS.find(o => o.id === nextId);
+  if (!output) return;
+
+  await wiimCmd(output.cmd);
+  state.currentOutputId = nextId;
+  updateOutputCycleButton(context);
+};
+
+const fetchOutputMode = async () => {
+  const raw = await wiimCmd("getNewAudioOutputHardwareMode");
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    const hw = parseInt(data.hardware, 10);
+    if (HW_TO_OUTPUT_ID[hw]) state.currentOutputId = HW_TO_OUTPUT_ID[hw];
+  } catch { /* ignore */ }
+};
+
+const updateOutputCycleButton = (context) => {
+  const enabledIds = state.outputCycleSettings[context] ?? ALL_OUTPUTS.map(o => o.id);
+  const outputId = state.currentOutputId;
+  const currentLabel = ALL_OUTPUTS.find(o => o.id === outputId)?.label ?? outputId;
+
+  sendToStreamDeck({ event: "setImage", context, payload: { image: getOutputIcon(outputId), target: 0 } });
+  sendToStreamDeck({ event: "setTitle", context, payload: { title: currentLabel, target: 0 } });
+};
+
+// ─── Presets ────────────────────────────────────────────────────────────────
+
+const fetchPresets = async () => {
+  const raw = await wiimCmd("getPresetInfo");
+  log("getPresetInfo raw:", raw);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    log("getPresetInfo parsed:", JSON.stringify(data).slice(0, 500));
+    if (Array.isArray(data.preset_list)) {
+      state.presets = data.preset_list;
+    } else if (Array.isArray(data)) {
+      state.presets = data;
+    }
+    for (const ctx of state.contexts.preset) updatePresetButton(ctx);
+  } catch (e) { log("getPresetInfo parse error:", e.message, "raw:", raw.slice(0, 200)); }
+};
+
+const updatePresetButton = (context) => {
+  const num = state.presetSettings[context];
+  if (!num) {
+    sendToStreamDeck({ event: "setTitle", context, payload: { title: t("noPreset"), target: 0 } });
+    return;
+  }
+  const preset = state.presets.find(p => p.number === num);
+  const label = preset ? preset.name : `Preset ${num}`;
+  const source = preset?.source ?? "";
+  const title = source ? `${source}\n${label}` : label;
+  sendToStreamDeck({ event: "setTitle", context, payload: { title, target: 0 } });
 };
 
 // ─── UPnP: Album Art ────────────────────────────────────────────────────────
@@ -351,6 +474,8 @@ const updateAlbumArt = async () => {
 const startPolling = () => {
   if (state.pollInterval) clearInterval(state.pollInterval);
   updateWiimState();
+  fetchPresets();
+  fetchOutputMode();
   state.pollInterval = setInterval(updateWiimState, 3000);
 };
 
@@ -395,6 +520,12 @@ const updateAllButtons = () => {
 
   for (const ctx of state.contexts.inputcycle)
     updateInputCycleButton(ctx);
+
+  for (const ctx of state.contexts.preset)
+    updatePresetButton(ctx);
+
+  for (const ctx of state.contexts.outputcycle)
+    updateOutputCycleButton(ctx);
 };
 
 const updateInputCycleButton = (context) => {
@@ -440,6 +571,56 @@ const handleInspectorMessage = (action, context, payload) => {
       sources: ALL_SOURCES.map(s => ({ id: s.id, label: s.label })),
       currentSourceId: state.currentSourceId,
     });
+  }
+
+  // Preset inspector requests available presets
+  if (payload.event === "getPresets") {
+    fetchPresets().then(() => {
+      sendToPropertyInspector(action, context, {
+        event: "presetCatalog",
+        presets: state.presets,
+        count: state.presets.length,
+      });
+    });
+  }
+
+  // Output inspector requests the output catalog
+  if (payload.event === "getOutputs") {
+    fetchOutputMode().then(() => {
+      sendToPropertyInspector(action, context, {
+        event: "outputCatalog",
+        outputs: ALL_OUTPUTS.map(o => ({ id: o.id, label: o.label })),
+        currentOutputId: state.currentOutputId,
+      });
+    });
+  }
+
+  // Output inspector saves settings
+  if (payload.event === "saveOutputSettings") {
+    const { wiimIP, enabledOutputs } = payload;
+    sendToStreamDeck({
+      event: "setGlobalSettings",
+      context: SD_PLUGIN_UUID,
+      payload: { wiimIP },
+    });
+    sendToStreamDeck({ event: "setSettings", context, payload: { wiimIP, enabledOutputs } });
+    state.wiimIP = wiimIP;
+    if (Array.isArray(enabledOutputs)) state.outputCycleSettings[context] = enabledOutputs;
+    startPolling();
+  }
+
+  // Preset inspector saves settings
+  if (payload.event === "savePresetSettings") {
+    const { wiimIP, presetNumber } = payload;
+    sendToStreamDeck({
+      event: "setGlobalSettings",
+      context: SD_PLUGIN_UUID,
+      payload: { wiimIP },
+    });
+    sendToStreamDeck({ event: "setSettings", context, payload: { wiimIP, presetNumber } });
+    state.wiimIP = wiimIP;
+    if (presetNumber) state.presetSettings[context] = presetNumber;
+    startPolling();
   }
 };
 
