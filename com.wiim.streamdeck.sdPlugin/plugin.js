@@ -1,5 +1,5 @@
 /**
- * Wiim Controller - Stream Deck Plugin v1.0.5
+ * Wiim Controller - Stream Deck Plugin v1.0.6
  * Control your WiiM player via local HTTPS API (LinkPlay).
  * Runs as a Node.js plugin (Stream Deck 6.4+).
  */
@@ -145,7 +145,7 @@ const connectStreamDeck = () => {
   ws.on("open", () => {
     ws.send(JSON.stringify({ event: SD_REGISTER_EVT, uuid: SD_PLUGIN_UUID }));
     ws.send(JSON.stringify({ event: "getGlobalSettings", context: SD_PLUGIN_UUID }));
-    log("Wiim Plugin v1.0.5 connected");
+    log("Wiim Plugin v1.0.6 connected");
   });
 
   ws.on("message", (raw) => {
