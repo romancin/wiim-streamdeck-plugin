@@ -2,6 +2,10 @@
 
 Control your [WiiM](https://wiimhome.com) audio player directly from your Elgato Stream Deck.
 
+## Screenshot
+
+![Stream Deck with WiiM Controller actions](docs/streamdeck-preview.png)
+
 ## Features
 
 - **Play / Pause** — toggle playback
