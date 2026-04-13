@@ -151,20 +151,17 @@ document.querySelectorAll("[data-i18n]").forEach(el => {
 });
 
 // ─── Source catalog ──────────────────────────────────────────────────────────
-const ALL_SOURCES = [
-  { id: "wifi",      label: "WiFi / Streaming" },
-  { id: "bluetooth", label: "Bluetooth"         },
-  { id: "linein",    label: "Line In"           },
-  { id: "optical",   label: "Optical (TOSLINK)" },
-  { id: "hdmi",      label: "HDMI ARC"          },
-  { id: "usb",       label: "USB"               },
-];
+// Populated by the plugin via the `sourceCatalog` message. The plugin filters
+// this list based on the connected device model (e.g. Phono is only included
+// for WiiM Ultra).
+let ALL_SOURCES = [];
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let actionUUID    = "";
 let currentSourceId = "";
-let rowOrder = ALL_SOURCES.map(s => s.id);
-let enabled  = new Set(ALL_SOURCES.map(s => s.id));
+let rowOrder = [];
+let enabled  = new Set();
+let pendingSavedIds = null;
 
 // ─── Stream Deck connection ──────────────────────────────────────────────────
 let sdWS;
@@ -200,14 +197,32 @@ const sendToPlugin = (payload) => {
 };
 
 // ─── Load settings ───────────────────────────────────────────────────────────
+// Settings and the source catalog can arrive in either order. Saved IDs are
+// stashed until the catalog is known, then merged in applyCatalog().
 const loadSettings = (settings) => {
   if (settings.wiimIP) document.getElementById("wiimIP").value = settings.wiimIP;
 
   if (Array.isArray(settings.enabledSources) && settings.enabledSources.length > 0) {
-    const savedIds  = settings.enabledSources;
-    const restIds   = ALL_SOURCES.map(s => s.id).filter(id => !savedIds.includes(id));
-    rowOrder = [...savedIds, ...restIds];
-    enabled  = new Set(savedIds);
+    pendingSavedIds = settings.enabledSources;
+  }
+
+  if (ALL_SOURCES.length > 0) applyCatalog();
+};
+
+const applyCatalog = () => {
+  const catalogIds = ALL_SOURCES.map(s => s.id);
+
+  if (pendingSavedIds) {
+    // Preserve saved order + checked state; drop any ids no longer supported
+    // by this device, then append newly-supported sources (unchecked).
+    const savedValid = pendingSavedIds.filter(id => catalogIds.includes(id));
+    const rest       = catalogIds.filter(id => !savedValid.includes(id));
+    rowOrder = [...savedValid, ...rest];
+    enabled  = new Set(savedValid);
+    pendingSavedIds = null;
+  } else {
+    rowOrder = [...catalogIds];
+    enabled  = new Set(catalogIds);
   }
 
   renderList();
@@ -215,8 +230,9 @@ const loadSettings = (settings) => {
 
 const handlePluginMsg = (payload) => {
   if (payload?.event === "sourceCatalog") {
+    ALL_SOURCES = Array.isArray(payload.sources) ? payload.sources : [];
     currentSourceId = payload.currentSourceId ?? "";
-    renderList();
+    applyCatalog();
   }
   if (payload?.event === "testResult") {
     showStatus("connStatus", payload.message, payload.success ? "ok" : "err");
