@@ -15,16 +15,27 @@ const ALL_SOURCES = [
   { id: "wifi",      label: "WiFi / Streaming", cmd: "setPlayerCmd:switchmode:wifi"      },
   { id: "bluetooth", label: "Bluetooth",         cmd: "setPlayerCmd:switchmode:bluetooth" },
   { id: "linein",    label: "Line In",           cmd: "setPlayerCmd:switchmode:line-in"   },
+  { id: "phono",     label: "Phono",             cmd: "setPlayerCmd:switchmode:phono"     },
   { id: "optical",   label: "Optical (TOSLINK)", cmd: "setPlayerCmd:switchmode:optical"   },
   { id: "hdmi",      label: "HDMI ARC",          cmd: "setPlayerCmd:switchmode:HDMI"      },
   { id: "usb",       label: "USB",               cmd: "setPlayerCmd:switchmode:udisk"     },
 ];
+
+// Models that expose a Phono input (MM). Used to filter ALL_SOURCES for the
+// inspector and to guard runtime cycling against stale saved settings.
+const PHONO_MODELS = new Set(["WiiM_Ultra"]);
+
+const getSupportedSources = () => {
+  const supportsPhono = PHONO_MODELS.has(state.deviceProject);
+  return ALL_SOURCES.filter(s => s.id !== "phono" || supportsPhono);
+};
 
 // SVG icons for each input source (144x144, white on dark)
 const SOURCE_ICONS = {
   wifi: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,78)" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"><circle cx="0" cy="12" r="4" fill="white" stroke="none"/><path d="M-18,-2 a26,26 0 0,1 36,0" /><path d="M-34,-16 a50,50 0 0,1 68,0" /><path d="M-50,-30 a74,74 0 0,1 100,0" /></g></svg>`,
   bluetooth: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)"><path d="M0,-35 L0,35 M0,-35 L18,-17 L-18,17 M0,35 L18,17 L-18,-17" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`,
   linein: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"><line x1="0" y1="-38" x2="0" y2="-10"/><rect x="-12" y="-10" width="24" height="30" rx="4" fill="none"/><line x1="-8" y1="20" x2="-8" y2="38"/><line x1="8" y1="20" x2="8" y2="38"/></g></svg>`,
+  phono: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)" fill="none" stroke="white" stroke-width="4"><circle cx="0" cy="0" r="40"/><circle cx="0" cy="0" r="22"/><circle cx="0" cy="0" r="4" fill="white" stroke="none"/><line x1="24" y1="-34" x2="8" y2="-8" stroke-linecap="round" stroke-width="5"/><circle cx="26" cy="-36" r="4" fill="white" stroke="none"/><rect x="4" y="-12" width="10" height="6" rx="1" fill="white" stroke="none"/></g></svg>`,
   optical: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)" fill="none" stroke="white" stroke-width="5"><rect x="-24" y="-24" width="48" height="48" rx="8"/><circle cx="0" cy="0" r="10"/><circle cx="0" cy="0" r="3" fill="white" stroke="none"/><line x1="-16" y1="-16" x2="-24" y2="-30" stroke-linecap="round"/><line x1="16" y1="-16" x2="24" y2="-30" stroke-linecap="round"/></g></svg>`,
   hdmi: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><text x="72" y="80" text-anchor="middle" fill="white" font-size="28" font-family="sans-serif" font-weight="bold">HDMI</text></svg>`,
   usb: `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#1a1a2e"/><g transform="translate(72,72)" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"><line x1="0" y1="-38" x2="0" y2="30"/><polygon points="-6,-38 6,-38 0,-48" fill="white" stroke="none"/><circle cx="14" cy="-8" r="6"/><line x1="0" y1="-8" x2="8" y2="-8"/><rect x="8" y="8" width="12" height="10" rx="2" fill="white"/><line x1="0" y1="13" x2="8" y2="13"/><circle cx="0" cy="34" r="8"/></g></svg>`,
@@ -36,7 +47,9 @@ const getSourceIcon = (sourceId) => {
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 };
 
-// Map getPlayerStatus "mode" field to source id
+// Map getPlayerStatus "mode" field to source id. Newer LinkPlay firmwares
+// return numeric strings (e.g. "54" = Phono on WiiM Ultra); older ones return
+// symbolic names. Both are handled here.
 const MODE_TO_ID = {
   wifi: "wifi", wlan: "wifi", airplay: "wifi", spotify: "wifi",
   bluetooth: "bluetooth", bt: "bluetooth",
@@ -44,6 +57,8 @@ const MODE_TO_ID = {
   optical: "optical", "co-axial": "optical",
   hdmi: "hdmi",
   udisk: "usb", usb: "usb",
+  phono: "phono",
+  "54": "phono",
 };
 
 // ─── Output catalog ─────────────────────────────────────────────────────────
@@ -83,6 +98,7 @@ const state = {
   currentAlbumArtB64: null,
   currentSourceId: "wifi",
   currentOutputId: "optical",
+  deviceProject: "",
   pollInterval: null,
   cycleSettings: {},
   outputCycleSettings: {},
@@ -301,7 +317,9 @@ const wiim_toggleMute = () =>
   wiimCmd(`setPlayerCmd:mute:${state.isMuted ? 0 : 1}`);
 
 const wiim_cycleInput = async (context) => {
-  const enabledIds = state.cycleSettings[context] ?? ALL_SOURCES.map(s => s.id);
+  const supportedIds = new Set(getSupportedSources().map(s => s.id));
+  const configured   = state.cycleSettings[context] ?? ALL_SOURCES.map(s => s.id);
+  const enabledIds   = configured.filter(id => supportedIds.has(id));
   if (enabledIds.length === 0) return;
 
   const currentIdx = enabledIds.indexOf(state.currentSourceId);
@@ -471,8 +489,18 @@ const updateAlbumArt = async () => {
 
 // ─── Polling ─────────────────────────────────────────────────────────────────
 
+const fetchDeviceInfo = async () => {
+  const raw = await wiimCmd("getStatusEx");
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    state.deviceProject = data.project ?? data.priv_prj ?? "";
+  } catch { /* ignore */ }
+};
+
 const startPolling = () => {
   if (state.pollInterval) clearInterval(state.pollInterval);
+  fetchDeviceInfo();
   updateWiimState();
   fetchPresets();
   fetchOutputMode();
@@ -564,13 +592,18 @@ const handleInspectorMessage = (action, context, payload) => {
     testWiimConnection(action, context, payload.wiimIP);
   }
 
-  // Inspector requests the source catalog to render checkboxes
+  // Inspector requests the source catalog to render checkboxes. We send only
+  // sources supported by the connected device (e.g. Phono is hidden unless the
+  // model is a WiiM Ultra). If we haven't detected the model yet, fetch it now
+  // so the inspector opens with the correct list.
   if (payload.event === "getSources") {
-    sendToPropertyInspector(action, context, {
+    const respond = () => sendToPropertyInspector(action, context, {
       event: "sourceCatalog",
-      sources: ALL_SOURCES.map(s => ({ id: s.id, label: s.label })),
+      sources: getSupportedSources().map(s => ({ id: s.id, label: s.label })),
       currentSourceId: state.currentSourceId,
     });
+    if (!state.deviceProject && state.wiimIP) fetchDeviceInfo().then(respond);
+    else respond();
   }
 
   // Preset inspector requests available presets
