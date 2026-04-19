@@ -96,6 +96,7 @@ const state = {
   currentVendor: "",
   currentAlbumArtURI: "",
   currentAlbumArtB64: null,
+  currentAlbumArtRawB64: null,
   currentSourceId: "wifi",
   currentOutputId: "optical",
   deviceProject: "",
@@ -104,6 +105,9 @@ const state = {
   outputCycleSettings: {},
   presets: [],
   presetSettings: {},
+  dialSettings: {},
+  dialScroll: {},
+  marqueeInterval: null,
   contexts: {
     playpause:  new Set(),
     next:       new Set(),
@@ -115,6 +119,7 @@ const state = {
     inputcycle: new Set(),
     preset:     new Set(),
     outputcycle: new Set(),
+    dial:       new Set(),
   },
 };
 
@@ -186,12 +191,19 @@ const ACTION_KEY = {
   "com.wiim.streamdeck.inputcycle": "inputcycle",
   "com.wiim.streamdeck.preset":      "preset",
   "com.wiim.streamdeck.outputcycle": "outputcycle",
+  "com.wiim.streamdeck.dial":        "dial",
 };
 
 const handleStreamDeckEvent = ({ event, action, context, payload }) => {
   switch (event) {
     case "keyDown":
       handleKeyDown(action, context, payload);
+      break;
+    case "dialRotate":
+      handleDialRotate(context, payload);
+      break;
+    case "dialDown":
+      handleDialDown(context);
       break;
     case "willAppear":
       registerContext(action, context, payload?.settings);
@@ -226,6 +238,17 @@ const registerContext = (action, context, settings) => {
   if (key === "outputcycle" && settings?.enabledOutputs) {
     state.outputCycleSettings[context] = settings.enabledOutputs;
   }
+  if (key === "dial") {
+    const rotateMode = settings?.rotateMode || "volume";
+    state.dialSettings[context] = {
+      rotateMode,
+      volumeStep: settings?.volumeStep || 2,
+      scrollText: !!settings?.scrollText,
+    };
+    setDialLayout(context, rotateMode);
+    updateDialFeedback(context);
+    syncMarquee();
+  }
   sendToStreamDeck({ event: "getSettings", context });
 };
 
@@ -235,6 +258,11 @@ const unregisterContext = (action, context) => {
   if (key === "inputcycle") delete state.cycleSettings[context];
   if (key === "preset") delete state.presetSettings[context];
   if (key === "outputcycle") delete state.outputCycleSettings[context];
+  if (key === "dial") {
+    delete state.dialSettings[context];
+    delete state.dialScroll[context];
+    syncMarquee();
+  }
   const total = Object.values(state.contexts).reduce((s, c) => s + c.size, 0);
   if (total === 0 && state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
 };
@@ -253,6 +281,18 @@ const applyButtonSettings = (action, context, settings) => {
   if (ACTION_KEY[action] === "outputcycle" && Array.isArray(settings.enabledOutputs)) {
     state.outputCycleSettings[context] = settings.enabledOutputs;
     updateOutputCycleButton(context);
+  }
+  if (ACTION_KEY[action] === "dial") {
+    const prevMode = state.dialSettings[context]?.rotateMode;
+    const rotateMode = settings.rotateMode || "volume";
+    state.dialSettings[context] = {
+      rotateMode,
+      volumeStep: settings.volumeStep || 2,
+      scrollText: !!settings.scrollText,
+    };
+    if (rotateMode !== prevMode) setDialLayout(context, rotateMode);
+    updateDialFeedback(context);
+    syncMarquee();
   }
 };
 
@@ -464,6 +504,29 @@ const compositeArtWithVendor = (artDataURI, vendor) => {
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 };
 
+// Wrap album art in an SVG with rounded corners for the Stream Deck + dial,
+// plus an optional small service banner overlaid at the bottom. Rounded
+// corners are faked with 4 black corner paths so the result works regardless
+// of the renderer's clip-path support and blends with the black LCD bg.
+const roundedArtWithVendor = (artDataURI, vendor) => {
+  if (!artDataURI) return null;
+  const r = 14;
+  const corners =
+    `<path d="M0,0 L${r},0 A${r},${r} 0 0 0 0,${r} Z" fill="#000"/>` +
+    `<path d="M100,0 L${100 - r},0 A${r},${r} 0 0 1 100,${r} Z" fill="#000"/>` +
+    `<path d="M100,100 L100,${100 - r} A${r},${r} 0 0 1 ${100 - r},100 Z" fill="#000"/>` +
+    `<path d="M0,100 L${r},100 A${r},${r} 0 0 1 0,${100 - r} Z" fill="#000"/>`;
+  let banner = "";
+  if (vendor) {
+    const escaped = String(vendor).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    banner =
+      `<rect x="0" y="78" width="100" height="22" fill="rgba(0,0,0,0.7)"/>` +
+      `<text x="50" y="93" text-anchor="middle" fill="#ffffff" font-size="12" font-family="sans-serif" font-weight="600">${escaped}</text>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><image href="${artDataURI}" width="100" height="100" preserveAspectRatio="xMidYMid slice"/>${banner}${corners}</svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+};
+
 const updateAlbumArt = async () => {
   const artURI = await fetchAlbumArtURI();
   const vendor = state.currentVendor;
@@ -473,8 +536,10 @@ const updateAlbumArt = async () => {
 
   if (artURI) {
     const rawB64 = await fetchImageAsBase64(artURI);
+    state.currentAlbumArtRawB64 = rawB64;
     state.currentAlbumArtB64 = compositeArtWithVendor(rawB64, vendor);
   } else {
+    state.currentAlbumArtRawB64 = null;
     state.currentAlbumArtB64 = null;
   }
 
@@ -485,6 +550,8 @@ const updateAlbumArt = async () => {
       payload: { image: state.currentAlbumArtB64 || undefined, target: 0 },
     });
   }
+
+  for (const ctx of state.contexts.dial) updateDialFeedback(ctx);
 };
 
 // ─── Polling ─────────────────────────────────────────────────────────────────
@@ -523,7 +590,7 @@ const updateWiimState = async () => {
   state.currentSourceId = MODE_TO_ID[data.mode?.toLowerCase()] ?? state.currentSourceId;
 
   updateAllButtons();
-  if (state.contexts.nowplaying.size > 0) updateAlbumArt();
+  if (state.contexts.nowplaying.size > 0 || state.contexts.dial.size > 0) updateAlbumArt();
 };
 
 // ─── Update buttons ──────────────────────────────────────────────────────────
@@ -554,6 +621,9 @@ const updateAllButtons = () => {
 
   for (const ctx of state.contexts.outputcycle)
     updateOutputCycleButton(ctx);
+
+  for (const ctx of state.contexts.dial)
+    updateDialFeedback(ctx);
 };
 
 const updateInputCycleButton = (context) => {
@@ -569,6 +639,132 @@ const updateInputCycleButton = (context) => {
   sendToStreamDeck({ event: "setImage", context, payload: { image: getSourceIcon(sourceId), target: 0 } });
   sendToStreamDeck({ event: "setTitle", context, payload: { title, target: 0 } });
 };
+
+// ─── Stream Deck + Dial ─────────────────────────────────────────────────────
+
+const getDialSettings = (context) => state.dialSettings[context] || { rotateMode: "volume", volumeStep: 2 };
+
+const handleDialRotate = async (context, payload) => {
+  if (!state.wiimIP) { sendToStreamDeck({ event: "showAlert", context }); return; }
+  const ticks = payload?.ticks ?? 0;
+  if (!ticks) return;
+  const { rotateMode, volumeStep } = getDialSettings(context);
+
+  if (rotateMode === "track") {
+    await wiimCmd(ticks > 0 ? "setPlayerCmd:next" : "setPlayerCmd:prev");
+  } else {
+    const delta = ticks * (volumeStep || 2);
+    const next = Math.max(0, Math.min(100, state.volume + delta));
+    if (next !== state.volume) await wiim_setVolume(next);
+  }
+  await updateWiimState();
+};
+
+const handleDialDown = async (context) => {
+  if (!state.contexts.dial.has(context)) return;
+  if (!state.wiimIP) { sendToStreamDeck({ event: "showAlert", context }); return; }
+  const { rotateMode } = getDialSettings(context);
+  if (rotateMode === "track") await wiim_togglePlayPause();
+  else await wiim_toggleMute();
+  await updateWiimState();
+};
+
+const TITLE_VISIBLE = 13;
+const SUBTITLE_VISIBLE = 18;
+const MARQUEE_MS = 280;
+const MARQUEE_GAP = "   ";
+
+// Loop a marquee view: returns a visible-width window sliding over
+// `text + gap`. Returns the full text if it already fits.
+const marqueeView = (text, visible, offset) => {
+  if (!text || text.length <= visible) return text;
+  const padded = text + MARQUEE_GAP;
+  const start = offset % padded.length;
+  const doubled = padded + padded;
+  return doubled.substring(start, start + visible);
+};
+
+const anyDialNeedsScroll = () =>
+  [...state.contexts.dial].some(ctx => state.dialSettings[ctx]?.scrollText);
+
+const startMarquee = () => {
+  if (state.marqueeInterval) return;
+  state.marqueeInterval = setInterval(tickMarquee, MARQUEE_MS);
+};
+
+const stopMarquee = () => {
+  if (!state.marqueeInterval) return;
+  clearInterval(state.marqueeInterval);
+  state.marqueeInterval = null;
+};
+
+const syncMarquee = () => {
+  if (anyDialNeedsScroll()) startMarquee();
+  else stopMarquee();
+};
+
+const tickMarquee = () => {
+  const trackKey = `${state.currentTrack}|${state.currentArtist}`;
+  for (const ctx of state.contexts.dial) {
+    const s = state.dialSettings[ctx];
+    if (!s?.scrollText) continue;
+    const scroll = (state.dialScroll[ctx] ||= { offset: 0, lastKey: "" });
+    if (scroll.lastKey !== trackKey) { scroll.offset = 0; scroll.lastKey = trackKey; }
+    scroll.offset += 1;
+    updateDialFeedback(ctx, { includeIcon: false });
+  }
+};
+
+const dialLayoutPath = (rotateMode) =>
+  rotateMode === "track"
+    ? "layouts/wiim-dial-track.json"
+    : "layouts/wiim-dial-volume.json";
+
+const setDialLayout = (context, rotateMode) => {
+  sendToStreamDeck({
+    event: "setFeedbackLayout",
+    context,
+    payload: { layout: dialLayoutPath(rotateMode) },
+  });
+};
+
+const updateDialFeedback = (context, opts = {}) => {
+  if (!state.contexts.dial.has(context)) return;
+  const { includeIcon = true } = opts;
+  const { rotateMode, scrollText } = getDialSettings(context);
+
+  const fullTitle = state.currentTrack || state.currentVendor || t("noPlayback");
+  const fullArtist = state.currentArtist || "";
+  const offset = state.dialScroll[context]?.offset ?? 0;
+
+  const title = scrollText
+    ? marqueeView(fullTitle, TITLE_VISIBLE, offset)
+    : truncate(fullTitle, 18);
+  const subtitle = scrollText
+    ? marqueeView(fullArtist, SUBTITLE_VISIBLE, offset)
+    : truncate(fullArtist, 24);
+
+  const payload = { title, value: subtitle };
+
+  if (includeIcon) {
+    payload.icon = state.currentAlbumArtRawB64
+      ? roundedArtWithVendor(state.currentAlbumArtRawB64, state.currentVendor)
+      : getDialPlaceholderIcon();
+  }
+
+  if (rotateMode === "track") {
+    payload.arrows = "◀   ▶";
+  } else {
+    payload.percent = state.isMuted ? `🔇 ${state.volume}%` : `${state.volume}%`;
+    payload.indicator = state.volume;
+  }
+
+  sendToStreamDeck({ event: "setFeedback", context, payload });
+};
+
+const DIAL_PLACEHOLDER = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" rx="14" ry="14" fill="#1a1a2e"/><g transform="translate(50,50)" fill="none" stroke="#4a4a6e" stroke-width="3"><circle r="28"/><circle r="14"/><circle r="3" fill="#4a4a6e" stroke="none"/></g></svg>`;
+const getDialPlaceholderIcon = () =>
+  "data:image/svg+xml;charset=utf-8," + encodeURIComponent(DIAL_PLACEHOLDER);
 
 // ─── Property Inspector messages ─────────────────────────────────────────────
 
@@ -640,6 +836,33 @@ const handleInspectorMessage = (action, context, payload) => {
     state.wiimIP = wiimIP;
     if (Array.isArray(enabledOutputs)) state.outputCycleSettings[context] = enabledOutputs;
     startPolling();
+  }
+
+  // Dial inspector saves settings
+  if (payload.event === "saveDialSettings") {
+    const { wiimIP, rotateMode, volumeStep, scrollText } = payload;
+    const mode = rotateMode || "volume";
+    sendToStreamDeck({
+      event: "setGlobalSettings",
+      context: SD_PLUGIN_UUID,
+      payload: { wiimIP, volumeStep },
+    });
+    sendToStreamDeck({
+      event: "setSettings",
+      context,
+      payload: { wiimIP, rotateMode: mode, volumeStep, scrollText: !!scrollText },
+    });
+    state.wiimIP = wiimIP;
+    state.dialSettings[context] = {
+      rotateMode: mode,
+      volumeStep: volumeStep || 2,
+      scrollText: !!scrollText,
+    };
+    if (!scrollText) state.dialScroll[context] = { offset: 0, lastKey: "" };
+    startPolling();
+    setDialLayout(context, mode);
+    updateDialFeedback(context);
+    syncMarquee();
   }
 
   // Preset inspector saves settings

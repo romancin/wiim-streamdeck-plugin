@@ -1,0 +1,43 @@
+{
+  "id": "com.wiim.streamdeck.wiim-dial-volume",
+  "items": [
+    {
+      "key": "icon",
+      "type": "pixmap",
+      "rect": [4, 4, 92, 92]
+    },
+    {
+      "key": "title",
+      "type": "text",
+      "rect": [104, 4, 92, 20],
+      "color": "#ffffff",
+      "font": { "size": 13, "weight": 700 },
+      "alignment": "left"
+    },
+    {
+      "key": "value",
+      "type": "text",
+      "rect": [104, 24, 92, 16],
+      "color": "#a8a8a8",
+      "font": { "size": 10, "weight": 400 },
+      "alignment": "left"
+    },
+    {
+      "key": "percent",
+      "type": "text",
+      "rect": [104, 46, 92, 28],
+      "color": "#ffffff",
+      "font": { "size": 22, "weight": 700 },
+      "alignment": "center"
+    },
+    {
+      "key": "indicator",
+      "type": "bar",
+      "rect": [104, 82, 92, 8],
+      "subtype": 4,
+      "bar_bg_c": "#333333",
+      "bar_fill_c": "#ffffff",
+      "bar_border_c": "#555555"
+    }
+  ]
+}
