@@ -1,0 +1,34 @@
+{
+  "id": "com.wiim.streamdeck.wiim-dial-track",
+  "items": [
+    {
+      "key": "icon",
+      "type": "pixmap",
+      "rect": [4, 4, 92, 92]
+    },
+    {
+      "key": "title",
+      "type": "text",
+      "rect": [104, 4, 92, 20],
+      "color": "#ffffff",
+      "font": { "size": 13, "weight": 700 },
+      "alignment": "left"
+    },
+    {
+      "key": "value",
+      "type": "text",
+      "rect": [104, 24, 92, 16],
+      "color": "#a8a8a8",
+      "font": { "size": 10, "weight": 400 },
+      "alignment": "left"
+    },
+    {
+      "key": "arrows",
+      "type": "text",
+      "rect": [104, 46, 92, 44],
+      "color": "#ffffff",
+      "font": { "size": 26, "weight": 700 },
+      "alignment": "center"
+    }
+  ]
+}

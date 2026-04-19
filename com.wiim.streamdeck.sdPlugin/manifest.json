@@ -115,6 +115,24 @@
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/output-icon" }],
       "PropertyInspectorPath": "inspector-output.html"
+    },
+    {
+      "Icon": "imgs/dial-icon",
+      "Name": "Now Playing Dial",
+      "UUID": "com.wiim.streamdeck.dial",
+      "Tooltip": "Stream Deck + dial: album art on screen, rotate for volume or track",
+      "Controllers": ["Encoder"],
+      "Encoder": {
+        "layout": "layouts/wiim-dial-volume.json",
+        "StackColor": "#1a1a2e",
+        "Icon": "imgs/dial-icon",
+        "TriggerDescription": {
+          "Rotate": "Volume / Track",
+          "Push": "Mute / Play-Pause"
+        }
+      },
+      "States": [{ "Image": "imgs/dial-icon" }],
+      "PropertyInspectorPath": "inspector-dial.html"
     }
   ]
 }
