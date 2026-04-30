@@ -1,6 +1,6 @@
 {
   "name": "com.wiim.streamdeck",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": true,
   "dependencies": {
     "ws": "^8.18.0"
