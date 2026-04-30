@@ -12,7 +12,7 @@
     "Debug": "enabled"
   },
   "Software": {
-    "MinimumVersion": "6.0"
+    "MinimumVersion": "6.9"
   },
   "OS": [
     { "Platform": "mac", "MinimumVersion": "10.15" },
