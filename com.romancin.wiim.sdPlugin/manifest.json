@@ -5,7 +5,7 @@
   "Description": "Control your WiiM player directly from Stream Deck",
   "Name": "Wiim Controller",
   "Icon": "imgs/plugin-icon",
-  "Version": "1.0.9",
+  "Version": "1.0.10",
   "SDKVersion": 3,
   "Nodejs": {
     "Version": "20",
