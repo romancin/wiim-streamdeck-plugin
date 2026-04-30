@@ -1,5 +1,6 @@
 {
   "Author": "Román Martín",
+  "UUID": "com.romancin.wiim",
   "CodePath": "plugin.js",
   "Description": "Control your WiiM player directly from Stream Deck",
   "Name": "Wiim Controller",
@@ -23,7 +24,7 @@
     {
       "Icon": "imgs/play-icon",
       "Name": "Play / Pause",
-      "UUID": "com.wiim.streamdeck.playpause",
+      "UUID": "com.romancin.wiim.playpause",
       "Tooltip": "Toggle play and pause on your WiiM",
       "SupportedInMultiActions": true,
       "States": [
@@ -35,7 +36,7 @@
     {
       "Icon": "imgs/next-icon",
       "Name": "Next Track",
-      "UUID": "com.wiim.streamdeck.next",
+      "UUID": "com.romancin.wiim.next",
       "Tooltip": "Skip to the next track",
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/next-icon" }],
@@ -44,7 +45,7 @@
     {
       "Icon": "imgs/prev-icon",
       "Name": "Previous Track",
-      "UUID": "com.wiim.streamdeck.prev",
+      "UUID": "com.romancin.wiim.prev",
       "Tooltip": "Go back to the previous track",
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/prev-icon" }],
@@ -53,7 +54,7 @@
     {
       "Icon": "imgs/volup-icon",
       "Name": "Volume Up",
-      "UUID": "com.wiim.streamdeck.volup",
+      "UUID": "com.romancin.wiim.volup",
       "Tooltip": "Increase volume by 5 points",
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/volup-icon" }],
@@ -62,7 +63,7 @@
     {
       "Icon": "imgs/voldown-icon",
       "Name": "Volume Down",
-      "UUID": "com.wiim.streamdeck.voldown",
+      "UUID": "com.romancin.wiim.voldown",
       "Tooltip": "Decrease volume by 5 points",
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/voldown-icon" }],
@@ -71,7 +72,7 @@
     {
       "Icon": "imgs/mute-icon",
       "Name": "Mute",
-      "UUID": "com.wiim.streamdeck.mute",
+      "UUID": "com.romancin.wiim.mute",
       "Tooltip": "Mute or unmute the audio",
       "SupportedInMultiActions": true,
       "States": [
@@ -83,7 +84,7 @@
     {
       "Icon": "imgs/info-icon",
       "Name": "Now Playing",
-      "UUID": "com.wiim.streamdeck.nowplaying",
+      "UUID": "com.romancin.wiim.nowplaying",
       "Tooltip": "Shows the current song on the button",
       "SupportedInMultiActions": false,
       "States": [{ "Image": "imgs/info-icon" }],
@@ -92,7 +93,7 @@
     {
       "Icon": "imgs/input-icon",
       "Name": "Input Cycle",
-      "UUID": "com.wiim.streamdeck.inputcycle",
+      "UUID": "com.romancin.wiim.inputcycle",
       "Tooltip": "Cycle through configured inputs (WiFi, BT, Line In, Optical, HDMI, USB)",
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/input-icon" }],
@@ -101,7 +102,7 @@
     {
       "Icon": "imgs/preset-icon",
       "Name": "Preset",
-      "UUID": "com.wiim.streamdeck.preset",
+      "UUID": "com.romancin.wiim.preset",
       "Tooltip": "Play a WiiM preset (configured in WiiM Home app)",
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/preset-icon" }],
@@ -110,7 +111,7 @@
     {
       "Icon": "imgs/output-icon",
       "Name": "Output Cycle",
-      "UUID": "com.wiim.streamdeck.outputcycle",
+      "UUID": "com.romancin.wiim.outputcycle",
       "Tooltip": "Cycle through audio outputs (Optical, Line Out, Coaxial)",
       "SupportedInMultiActions": true,
       "States": [{ "Image": "imgs/output-icon" }],
@@ -119,7 +120,7 @@
     {
       "Icon": "imgs/dial-icon",
       "Name": "Now Playing Dial",
-      "UUID": "com.wiim.streamdeck.dial",
+      "UUID": "com.romancin.wiim.dial",
       "Tooltip": "Stream Deck + dial: album art on screen, rotate for volume or track",
       "Controllers": ["Encoder"],
       "Encoder": {
