@@ -181,17 +181,17 @@ const connectStreamDeck = () => {
 // ─── Event dispatcher ────────────────────────────────────────────────────────
 
 const ACTION_KEY = {
-  "com.wiim.streamdeck.playpause":  "playpause",
-  "com.wiim.streamdeck.next":       "next",
-  "com.wiim.streamdeck.prev":       "prev",
-  "com.wiim.streamdeck.volup":      "volup",
-  "com.wiim.streamdeck.voldown":    "voldown",
-  "com.wiim.streamdeck.mute":       "mute",
-  "com.wiim.streamdeck.nowplaying": "nowplaying",
-  "com.wiim.streamdeck.inputcycle": "inputcycle",
-  "com.wiim.streamdeck.preset":      "preset",
-  "com.wiim.streamdeck.outputcycle": "outputcycle",
-  "com.wiim.streamdeck.dial":        "dial",
+  "com.romancin.wiim.playpause":  "playpause",
+  "com.romancin.wiim.next":       "next",
+  "com.romancin.wiim.prev":       "prev",
+  "com.romancin.wiim.volup":      "volup",
+  "com.romancin.wiim.voldown":    "voldown",
+  "com.romancin.wiim.mute":       "mute",
+  "com.romancin.wiim.nowplaying": "nowplaying",
+  "com.romancin.wiim.inputcycle": "inputcycle",
+  "com.romancin.wiim.preset":      "preset",
+  "com.romancin.wiim.outputcycle": "outputcycle",
+  "com.romancin.wiim.dial":        "dial",
 };
 
 const handleStreamDeckEvent = ({ event, action, context, payload }) => {
