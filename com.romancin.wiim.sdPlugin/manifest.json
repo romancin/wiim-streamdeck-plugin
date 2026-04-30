@@ -6,13 +6,13 @@
   "Name": "Wiim Controller",
   "Icon": "imgs/plugin-icon",
   "Version": "1.0.9",
-  "SDKVersion": 2,
+  "SDKVersion": 3,
   "Nodejs": {
     "Version": "20",
     "Debug": "enabled"
   },
   "Software": {
-    "MinimumVersion": "6.4"
+    "MinimumVersion": "6.0"
   },
   "OS": [
     { "Platform": "mac", "MinimumVersion": "10.15" },
