@@ -110,6 +110,12 @@
 
 <div id="preset-list"></div>
 
+<div class="row" style="margin-top:8px">
+  <label for="presetName" data-i18n="labelName">Button name</label>
+  <input type="text" id="presetName" maxlength="20" placeholder="Tidal" spellcheck="false" autocomplete="off"/>
+</div>
+<p class="hint" data-i18n="hintName">The WiiM does not share preset names, so type the one you gave it in the app. It is shown on the button.</p>
+
 <div class="btn-row">
   <button class="btn btn-primary" id="btnSave" data-i18n="btnSave">Save</button>
 </div>
@@ -125,6 +131,8 @@ const STRINGS = {
     btnTest: "Test",
     btnRefresh: "Refresh Presets",
     btnSave: "Save",
+    labelName: "Button name",
+    hintName: "The WiiM does not share preset names, so type the one you gave it in the app. It is shown on the button.",
     sectionPreset: "Select Preset",
     hintPreset: "Choose a preset to trigger when this button is pressed. Configure presets in the WiiM Home app.",
     testing: "Testing\u2026",
@@ -144,6 +152,8 @@ const STRINGS = {
     btnTest: "Probar",
     btnRefresh: "Actualizar Presets",
     btnSave: "Guardar",
+    labelName: "Nombre del bot\u00f3n",
+    hintName: "El WiiM no comparte los nombres de los presets, as\u00ed que escribe el que le diste en la app. Se muestra en el bot\u00f3n.",
     sectionPreset: "Seleccionar Preset",
     hintPreset: "Elige un preset para activar al pulsar este bot\u00f3n. Configura los presets en la app WiiM Home.",
     testing: "Probando\u2026",
@@ -207,6 +217,7 @@ const sendToPlugin = (payload) => {
 // ─── Load settings ───────────────────────────────────────────────────────────
 const loadSettings = (settings) => {
   if (settings.wiimIP) document.getElementById("wiimIP").value = settings.wiimIP;
+  if (settings.presetName) document.getElementById("presetName").value = settings.presetName;
   if (settings.presetNumber) {
     selectedPreset = settings.presetNumber;
     renderList();
@@ -269,7 +280,8 @@ document.getElementById("btnSave").addEventListener("click", () => {
   if (!wiimIP) { showStatus("saveStatus", s("enterIPToSave"), "err"); return; }
   if (!selectedPreset) { showStatus("saveStatus", s("selectPreset"), "err"); return; }
 
-  sendToPlugin({ event: "savePresetSettings", wiimIP, presetNumber: selectedPreset });
+  const presetName = document.getElementById("presetName").value.trim();
+  sendToPlugin({ event: "savePresetSettings", wiimIP, presetNumber: selectedPreset, presetName });
   showStatus("saveStatus", s("saved"), "ok");
 });
 
