@@ -105,6 +105,7 @@ const state = {
   outputCycleSettings: {},
   presets: [],
   presetSettings: {},
+  presetNames: {},
   dialSettings: {},
   dialScroll: {},
   marqueeInterval: null,
@@ -234,6 +235,7 @@ const registerContext = (action, context, settings) => {
   }
   if (key === "preset" && settings?.presetNumber) {
     state.presetSettings[context] = settings.presetNumber;
+    state.presetNames[context] = settings.presetName || "";
   }
   if (key === "outputcycle" && settings?.enabledOutputs) {
     state.outputCycleSettings[context] = settings.enabledOutputs;
@@ -256,7 +258,7 @@ const unregisterContext = (action, context) => {
   const key = ACTION_KEY[action];
   if (key) state.contexts[key].delete(context);
   if (key === "inputcycle") delete state.cycleSettings[context];
-  if (key === "preset") delete state.presetSettings[context];
+  if (key === "preset") { delete state.presetSettings[context]; delete state.presetNames[context]; }
   if (key === "outputcycle") delete state.outputCycleSettings[context];
   if (key === "dial") {
     delete state.dialSettings[context];
@@ -276,6 +278,7 @@ const applyButtonSettings = (action, context, settings) => {
   }
   if (ACTION_KEY[action] === "preset" && settings.presetNumber) {
     state.presetSettings[context] = settings.presetNumber;
+    state.presetNames[context] = settings.presetName || "";
     updatePresetButton(context);
   }
   if (ACTION_KEY[action] === "outputcycle" && Array.isArray(settings.enabledOutputs)) {
@@ -413,20 +416,59 @@ const updateOutputCycleButton = (context) => {
 
 // ─── Presets ────────────────────────────────────────────────────────────────
 
+const KEY_MAPPING_SOAP_BODY = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+  <s:Body>
+    <u:GetKeyMapping xmlns:u="urn:schemas-wiimu-com:service:PlayQueue:1"/>
+  </s:Body>
+</s:Envelope>`;
+
+// Newer firmware stores presets made in the WiiM Home app as routines, which
+// getPresetInfo does not list. The key mapping shows which slots are filled
+// (names are not available), and MCUKeyShortClick:N triggers slot N.
+const fetchKeyMappingPresets = async () => {
+  if (!state.wiimIP) return [];
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`http://${state.wiimIP}:49152/upnp/control/PlayQueue1`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": '"urn:schemas-wiimu-com:service:PlayQueue:1#GetKeyMapping"',
+      },
+      body: KEY_MAPPING_SOAP_BODY,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const xml = (await res.text()).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"');
+    const found = [];
+    for (const m of xml.matchAll(/<Key(\d+)>\s*<RoutineId>([^<]+)<\/RoutineId>/g)) {
+      const number = parseInt(m[1], 10);
+      if (number >= 1 && number <= 12 && m[2].trim() !== "Empty") {
+        found.push({ number, name: `Preset ${number}`, source: "" });
+      }
+    }
+    return found;
+  } catch (e) {
+    log("GetKeyMapping error:", e.message);
+    return [];
+  }
+};
+
 const fetchPresets = async () => {
   const raw = await wiimCmd("getPresetInfo");
   log("getPresetInfo raw:", raw);
-  if (!raw) return;
+  let list = [];
   try {
-    const data = JSON.parse(raw);
-    log("getPresetInfo parsed:", JSON.stringify(data).slice(0, 500));
-    if (Array.isArray(data.preset_list)) {
-      state.presets = data.preset_list;
-    } else if (Array.isArray(data)) {
-      state.presets = data;
-    }
-    for (const ctx of state.contexts.preset) updatePresetButton(ctx);
+    const data = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(data?.preset_list)) list = data.preset_list;
+    else if (Array.isArray(data)) list = data;
   } catch (e) { log("getPresetInfo parse error:", e.message, "raw:", raw.slice(0, 200)); }
+
+  if (list.length === 0) list = await fetchKeyMappingPresets();
+  state.presets = list;
+  for (const ctx of state.contexts.preset) updatePresetButton(ctx);
 };
 
 const updatePresetButton = (context) => {
@@ -436,7 +478,7 @@ const updatePresetButton = (context) => {
     return;
   }
   const preset = state.presets.find(p => p.number === num);
-  const label = preset ? preset.name : `Preset ${num}`;
+  const label = state.presetNames[context] || (preset ? preset.name : `Preset ${num}`);
   const source = preset?.source ?? "";
   const title = source ? `${source}\n${label}` : label;
   sendToStreamDeck({ event: "setTitle", context, payload: { title, target: 0 } });
@@ -867,15 +909,19 @@ const handleInspectorMessage = (action, context, payload) => {
 
   // Preset inspector saves settings
   if (payload.event === "savePresetSettings") {
-    const { wiimIP, presetNumber } = payload;
+    const { wiimIP, presetNumber, presetName } = payload;
     sendToStreamDeck({
       event: "setGlobalSettings",
       context: SD_PLUGIN_UUID,
       payload: { wiimIP },
     });
-    sendToStreamDeck({ event: "setSettings", context, payload: { wiimIP, presetNumber } });
+    sendToStreamDeck({ event: "setSettings", context, payload: { wiimIP, presetNumber, presetName } });
     state.wiimIP = wiimIP;
-    if (presetNumber) state.presetSettings[context] = presetNumber;
+    if (presetNumber) {
+      state.presetSettings[context] = presetNumber;
+      state.presetNames[context] = presetName || "";
+      updatePresetButton(context);
+    }
     startPolling();
   }
 };

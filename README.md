@@ -38,8 +38,11 @@ Presets are configured in the **WiiM Home** app, not in the Stream Deck plugin. 
 2. Tap the playback screen → three-dot menu → **Add to Preset**
 3. Choose a preset slot (1–12)
 4. In Stream Deck, drag the **Preset** action to your deck and select the preset number in the Property Inspector
+5. Optionally type a **Button name** (for example "Tidal") so the button shows it
 
 You can also add radio stations, local playlists, or any other supported source as a preset.
+
+> **Note:** newer WiiM firmware does not report preset names to third-party apps, so the Property Inspector lists filled slots as "Preset 1", "Preset 2", and so on. Use the **Button name** field to label them. Older firmware that reports names shows them automatically.
 
 ### Finding your WiiM IP
 
